@@ -1,0 +1,129 @@
+{% import 'forms.html' as forms %}
+<html>
+<head>
+    <link rel="stylesheet" type="text/css" href="{{url_for('static', filename='forms.css')}}" media="screen" />
+</head>
+
+<body>
+    <div class="qhana-microfrontend">
+        {% call forms.render_form() %}
+            <div class="qhana-form-field" id="questionnaire">
+
+            </div>
+
+            {{ forms.render_fields(schema, values=values, errors=errors) }}
+            <div class="qhana-table" style="flex-direction: row; flex-wrap: wrap;
+            height: 750px; overflow: auto;">
+
+            </div>
+            <br>
+            <div class="qhana-form-buttons">
+                <button id="continueBtn">Continue</button>
+            </div>
+        {% endcall %}
+    </div>
+
+    <script src="{{url_for('static', filename='microfrontend.js')}}"></script>
+    <script>
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'http://localhost:8588/root', true);
+        xhr.responseType = "json";
+        xhr.onload = () => {
+            var status = xhr.status;
+            if (status === 200) {
+                display(xhr.response);
+            } else {
+                console.log("Error occured: " + xhr.response);
+            }
+        };
+        xhr.send();
+
+        function display(questionnaire) {
+            console.log("Got something: " + JSON.stringify(questionnaire));
+            var questionnaireElement = document.getElementById("questionnaire");
+            var continueButton = document.getElementById("continueBtn");
+
+            var questions = questionnaire.questions;
+            var transitions = questionnaire.questionTransitions;
+            var currentQuestionId;
+            var currentQuestionType;
+
+            for (var i = 0; i < questions.length; i++) {
+                var question = questions[i];
+                console.log('question: ' + JSON.stringify(question));
+                var root = document.createElement("div");
+                root.id = "question-" + question._id;
+                root.hidden = true;
+
+                if (question.root) {
+                    root.hidden = false;
+                    currentQuestionId = question._id;
+                    currentQuestionType = question.questionType;
+                }
+
+                var questionNode = document.createElement("h4");
+                questionNode.appendChild(document.createTextNode(question.question));
+                root.appendChild(questionNode);
+
+                if (question.questionType === 'YES_NO') {
+                    var yesRadiobox = document.createElement('input');
+                    yesRadiobox.type = 'radio';
+                    yesRadiobox.name = 'yesno-' + question._id;
+                    yesRadiobox.value = 'yes';
+
+                    var yesLabel = document.createElement('label');
+                    yesLabel.htmlFor = 'yes-' + question._id;
+                    yesLabel.appendChild(document.createTextNode('Yes'));
+
+                    var noRadiobox = document.createElement('input');
+                    noRadiobox.type = 'radio';
+                    noRadiobox.name = 'yesno-' + question._id;
+                    noRadiobox.value = 'no';
+
+                    var noLabel = document.createElement('label');
+                    noLabel.htmlFor = 'yes-' + question._id;
+                    noLabel.appendChild(document.createTextNode('No'));
+
+                    root.appendChild(yesRadiobox);
+                    root.appendChild(yesLabel);
+                    root.appendChild(noRadiobox);
+                    root.appendChild(noLabel);
+                }
+
+                questionnaireElement.appendChild(root);
+            }
+
+            continueButton.onclick = (e) => {
+                e.preventDefault();
+                var possibleTransitions = transitions.filter(t => t.from === currentQuestionId);
+                console.log(JSON.stringify(possibleTransitions));
+                for (var pt of possibleTransitions) {
+                    var condition = eval("($answer) => " + pt.condition);
+                    var result = false;
+                    if (currentQuestionType === "YES_NO") {
+                        var radios = document.getElementsByName("yesno-" + currentQuestionId);
+                        for (var i = 0; i < radios.length; i++) {
+                            if (radios[i].checked) {
+                                result = condition(radios[i].value);
+                                console.log("($answer) => " + pt.condition);
+                                console.log(radios[i].value);
+                                console.log(result);
+                            }
+                        }
+                    }
+
+                    if (result) {
+                        var root = document.getElementById("question-" + currentQuestionId);
+                        root.hidden = true;
+
+                        var root = document.getElementById("question-" + pt.to);
+                        root.hidden = false;
+                        currentQuestionId = pt.to;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>

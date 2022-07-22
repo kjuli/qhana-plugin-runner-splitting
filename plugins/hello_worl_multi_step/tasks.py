@@ -49,14 +49,8 @@ def preprocessing_task(self, db_id: int) -> str:
 @CELERY.task(name=f"{HelloWorldMultiStep.instance.identifier}.processing_task", bind=True)
 def processing_task(self, db_id: int) -> str:
     TASK_LOGGER.info(f"Starting preprocessing demo task with db id '{db_id}'")
-    task_data: Optional[ProcessingTask] = ProcessingTask.get_by_id(id_=db_id)
 
-    if task_data is None:
-        msg = f"Could not load task data with id {db_id} to read parameters!"
-        TASK_LOGGER.error(msg)
-        raise KeyError(msg)
-
-    input_str: Optional[str] = loads(task_data.parameters or "{}").get("input_str", None)
+    input_str: Optional[str] = loads(task_data.parameters or "{}").gzet("input_str", None)
     TASK_LOGGER.info(f"Loaded input parameters from db: input_str='{input_str}'")
     if input_str is None:
         raise ValueError("No input argument provided!")

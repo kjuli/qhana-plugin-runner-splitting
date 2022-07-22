@@ -2,6 +2,7 @@ from http import HTTPStatus
 from json import dumps
 from typing import Mapping, Optional
 
+import requests
 from celery.canvas import chain
 from flask import Response, redirect
 from flask.globals import request
@@ -12,7 +13,7 @@ from marshmallow import EXCLUDE
 from celery.utils.log import get_task_logger
 from marshmallow.utils import INCLUDE
 
-from .schemas import QuantumClassicalSplitterParameterSchema
+from .schemas import QuantumClassicalSplitterParameterSchema, QuantumClassicalSplitterRequestSchema, TaskResponseSchema
 
 from qhana_plugin_runner.api.plugin_schemas import (
     PluginMetadata,
@@ -31,6 +32,8 @@ from qhana_plugin_runner.tasks import (
 )
 
 from .task import processing_task
+
+
 
 @QUANTUM_CLASSICAL_SPLITTER_BP.route("/")
 class PluginsView(MethodView):
@@ -80,7 +83,7 @@ class MicroFrontend(MethodView):
         schema = QuantumClassicalSplitterParameterSchema()
         return Response(
             render_template(
-                "quantum_classical_splitter_template.html",
+                "quantum_classical_splitter_questionnaire.html",
                 name=QuantumClassicalSplitterBp.instance.name,
                 version=QuantumClassicalSplitterBp.instance.version,
                 schema=schema,
@@ -96,7 +99,7 @@ class MicroFrontend(MethodView):
 @QUANTUM_CLASSICAL_SPLITTER_BP.route("/process/")
 class ProcessView(MethodView):
 
-    @QUANTUM_CLASSICAL_SPLITTER_BP.response(HTTPStatus.OK)
+    @QUANTUM_CLASSICAL_SPLITTER_BP.response(HTTPStatus.OK, TaskResponseSchema())
     @QUANTUM_CLASSICAL_SPLITTER_BP.arguments(
         QuantumClassicalSplitterRequestSchema(unknown=EXCLUDE), location="form"
     )
@@ -108,3 +111,44 @@ class ProcessView(MethodView):
         )
         db_task.save(commit=True)
 
+        try:
+            if "file" not in request.files:
+                raise ValueError()
+
+            file = request.files["file"]
+
+            # requests.post("localhost:8080", data=file) Look Into this
+
+        except Exception as err:
+            pass
+
+        return redirect(url_for(f"{QUANTUM_CLASSICAL_SPLITTER_BP.name}.QuestionnaireView"), HTTPStatus.SEE_OTHER)
+
+@QUANTUM_CLASSICAL_SPLITTER_BP.route("/questionnaire/")
+class QuestionnaireView(MethodView):
+
+    @QUANTUM_CLASSICAL_SPLITTER_BP.html_response(HTTPStatus.OK)
+    @QUANTUM_CLASSICAL_SPLITTER_BP.arguments(
+        QuantumClassicalSplitterParameterSchema(partial=True, unknown=EXCLUDE),
+        location="query",
+        required=False
+    )
+    @QUANTUM_CLASSICAL_SPLITTER_BP.require_jwt("jwt", optional=True)
+    def get(self, errors):
+        return self.render(errors)
+
+    def render(self, errors):
+        schema = QuantumClassicalSplitterParameterSchema()
+        return Response(
+            render_template(
+                "quantum_classical_splitter_questionnaire.html",
+                name=QuantumClassicalSplitterBp.instance.name,
+                version=QuantumClassicalSplitterBp.instance.version,
+                schema=schema,
+                values={},
+                errors=errors,
+                process=url_for(f"{QUANTUM_CLASSICAL_SPLITTER_BP.name}.ProcessView"),
+                help_text="Some **help_text**",
+                examples_values={}
+            )
+        )

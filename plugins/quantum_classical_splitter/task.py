@@ -9,6 +9,8 @@ from . import QuantumClassicalSplitterBp
 from qhana_plugin_runner.celery import CELERY
 from qhana_plugin_runner.db.models.tasks import ProcessingTask
 
+import requests
+
 from qhana_plugin_runner.storage import STORE
 
 TASK_LOGGER = get_task_logger(__name__)
@@ -24,9 +26,6 @@ def processing_task(self, db_id: int) -> str:
         TASK_LOGGER.error(msg)
         raise KeyError(msg)
 
-    file_input: Optional[str] = loads(task_data.parameters or "{}").get("file", None)
-
-    if file_input is None:
-        raise ValueError("No input provided!")
-
     # TODO: Perform Request to Server
+    #requests.post("localhost:8080/data", data={'file': file_input})
+    return "Correct"
