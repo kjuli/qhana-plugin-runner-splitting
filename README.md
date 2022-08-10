@@ -349,12 +349,6 @@ This defaults to `local_filesystem`.
 
 ### Running the Plugin-Runner with Docker Compose
 
-If you are using an M1 processor you need to build the plugin runner image for the amd64 platform if the plugins you want to use have dependencies that don't have arm64 builds:
-
-```
-docker buildx build --load -t qhana-plugin-runner --platform linux/amd64 --no-cache .
-```
-
 Start the docker compose with:
 
 ```
@@ -368,16 +362,6 @@ docker-compose down
 ```
 
 To also delete the volume containing the output files add the flag `-v`.
-
-#### Docker Compose with MUSE database
-
-If you want to start the MUSE database as well you need to build the muse-db image. 
-As a prerequisite you need to have a `mini-muse.sql` file in `plugins/costume_loader_pkg/db_container` and build the Dockerfile that is in the same folder with `docker build -t muse-db plugins/costume_loader_pkg/db_container`.
-Then you can start everything with
-
-```
-docker-compose --profile with_db up
-```
 
 
 ## Acknowledgements

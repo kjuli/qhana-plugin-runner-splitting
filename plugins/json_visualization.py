@@ -1,4 +1,4 @@
-# Copyright 2021 QHAna plugin runner contributors.
+# Copyright 2022 QHAna plugin runner contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -49,23 +49,17 @@ from qhana_plugin_runner.storage import STORE
 from qhana_plugin_runner.tasks import save_task_error, save_task_result
 from qhana_plugin_runner.util.plugins import QHAnaPluginBase, plugin_identifier
 
-_plugin_name = "csv-visualization"
+_plugin_name = "json-visualization"
 __version__ = "v0.1.0"
 _identifier = plugin_identifier(_plugin_name, __version__)
 
 
-CSV_BLP = SecurityBlueprint(
+JSON_BLP = SecurityBlueprint(
     _identifier,  # blueprint name
     __name__,  # module import name!
-    description="CSV visualization API.",
-    template_folder="csv_visualization_templates",
+    description="A demo JSON visualization plugin.",
+    template_folder="json_visualization_templates",
 )
-
-
-class DemoResponseSchema(MaBaseSchema):
-    name = ma.fields.String(required=True, allow_none=False, dump_only=True)
-    version = ma.fields.String(required=True, allow_none=False, dump_only=True)
-    identifier = ma.fields.String(required=True, allow_none=False, dump_only=True)
 
 
 class TaskResponseSchema(MaBaseSchema):
@@ -74,44 +68,44 @@ class TaskResponseSchema(MaBaseSchema):
     task_result_url = ma.fields.Url(required=True, allow_none=False, dump_only=True)
 
 
-class CsvInputParametersSchema(FrontendFormBaseSchema):
+class JsonInputParametersSchema(FrontendFormBaseSchema):
     data = FileUrl(
         required=True,
         allow_none=False,
         data_input_type="*",
-        data_content_types=["text/csv"],
+        data_content_types=["application/json"],
         metadata={
-            "label": "CSV File",
-            "description": "The URL to a CSV file.",
+            "label": "JSON File",
+            "description": "The URL to a JSON file.",
         },
     )
 
 
-@CSV_BLP.route("/")
+@JSON_BLP.route("/")
 class PluginsView(MethodView):
     """Plugins collection resource."""
 
-    @CSV_BLP.response(HTTPStatus.OK, PluginMetadataSchema())
-    @CSV_BLP.require_jwt("jwt", optional=True)
+    @JSON_BLP.response(HTTPStatus.OK, PluginMetadataSchema())
+    @JSON_BLP.require_jwt("jwt", optional=True)
     def get(self):
         """Endpoint returning the plugin metadata."""
-        plugin = CsvVisualization.instance
+        plugin = JsonVisualization.instance
         if plugin is None:
             abort(HTTPStatus.INTERNAL_SERVER_ERROR)
         return PluginMetadata(
             title=plugin.name,
             description=plugin.description,
-            name=plugin.name,
+            name=plugin.identifier,
             version=plugin.version,
             type=PluginType.visualization,
             entry_point=EntryPoint(
-                href=url_for(f"{CSV_BLP.name}.ProcessView"),
-                ui_href=url_for(f"{CSV_BLP.name}.MicroFrontend"),
+                href=url_for(f"{JSON_BLP.name}.ProcessView"),
+                ui_href=url_for(f"{JSON_BLP.name}.MicroFrontend"),
                 plugin_dependencies=[],
                 data_input=[
                     InputDataMetadata(
                         data_type="*",
-                        content_type=["text/csv"],
+                        content_type=["application/json"],
                         parameter="data",
                         required=True,
                     )
@@ -124,77 +118,70 @@ class PluginsView(MethodView):
                     )
                 ],
             ),
-            tags=CsvVisualization.instance.tags,
+            tags=[],
         )
 
 
-@CSV_BLP.route("/ui/")
+@JSON_BLP.route("/ui/")
 class MicroFrontend(MethodView):
-    """Micro frontend for the csv visualization plugin."""
+    """Micro frontend for the JSON visualization plugin."""
 
-    example_inputs = {
-        "inputStr": "Sample input string.",
-    }
-
-    @CSV_BLP.html_response(
-        HTTPStatus.OK, description="Micro frontend of the csv visualization plugin."
+    @JSON_BLP.html_response(
+        HTTPStatus.OK, description="Micro frontend of the JSON visualization plugin."
     )
-    @CSV_BLP.arguments(
-        CsvInputParametersSchema(
+    @JSON_BLP.arguments(
+        JsonInputParametersSchema(
             partial=True, unknown=EXCLUDE, validate_errors_as_result=True
         ),
         location="query",
         required=False,
     )
-    @CSV_BLP.require_jwt("jwt", optional=True)
+    @JSON_BLP.require_jwt("jwt", optional=True)
     def get(self, errors):
         """Return the micro frontend."""
         return self.render(request.args, errors)
 
-    @CSV_BLP.html_response(
-        HTTPStatus.OK, description="Micro frontend of the csv visualization plugin."
+    @JSON_BLP.html_response(
+        HTTPStatus.OK, description="Micro frontend of the json visualization plugin."
     )
-    @CSV_BLP.arguments(
-        CsvInputParametersSchema(
+    @JSON_BLP.arguments(
+        JsonInputParametersSchema(
             partial=True, unknown=EXCLUDE, validate_errors_as_result=True
         ),
         location="form",
         required=False,
     )
-    @CSV_BLP.require_jwt("jwt", optional=True)
+    @JSON_BLP.require_jwt("jwt", optional=True)
     def post(self, errors):
         """Return the micro frontend with prerendered inputs."""
         return self.render(request.form, errors)
 
     def render(self, data: Mapping, errors: dict):
-        plugin = CsvVisualization.instance
+        plugin = JsonVisualization.instance
         if plugin is None:
             abort(HTTPStatus.INTERNAL_SERVER_ERROR)
-        schema = CsvInputParametersSchema()
+        schema = JsonInputParametersSchema()
         return Response(
             render_template(
-                "csv_visualization.html",
+                "json_visualization.html",
                 name=plugin.name,
                 version=plugin.version,
                 schema=schema,
                 values=data,
                 errors=errors,
-                process=url_for(f"{CSV_BLP.name}.ProcessView"),
-                example_values=url_for(
-                    f"{CSV_BLP.name}.MicroFrontend", **self.example_inputs
-                ),
+                process=url_for(f"{JSON_BLP.name}.ProcessView"),
+                example_values=url_for(f"{JSON_BLP.name}.MicroFrontend"),
             )
         )
 
 
-# FIXME implement a real csv visualization processing task (maybe csv to html conversion?)
-@CSV_BLP.route("/process/")
+@JSON_BLP.route("/process/")
 class ProcessView(MethodView):
     """Start a long running processing task."""
 
-    @CSV_BLP.arguments(CsvInputParametersSchema(unknown=EXCLUDE), location="form")
-    @CSV_BLP.response(HTTPStatus.OK, TaskResponseSchema())
-    @CSV_BLP.require_jwt("jwt", optional=True)
+    @JSON_BLP.arguments(JsonInputParametersSchema(unknown=EXCLUDE), location="form")
+    @JSON_BLP.response(HTTPStatus.OK, TaskResponseSchema())
+    @JSON_BLP.require_jwt("jwt", optional=True)
     def post(self, arguments):
         """Start the demo task."""
         db_task = ProcessingTask(task_name=demo_task.name, parameters=dumps(arguments))
@@ -213,25 +200,24 @@ class ProcessView(MethodView):
         )
 
 
-class CsvVisualization(QHAnaPluginBase):
+class JsonVisualization(QHAnaPluginBase):
 
     name = _plugin_name
     version = __version__
-    description = "A demo CSV visualization plugin."
+    description = "Visualizes JSON data."
     tags = ["visualization"]
 
     def __init__(self, app: Optional[Flask]) -> None:
         super().__init__(app)
 
     def get_api_blueprint(self):
-        return CSV_BLP
+        return JSON_BLP
 
 
 TASK_LOGGER = get_task_logger(__name__)
 
 
-# FIXME implement a real csv visualization processing task (maybe csv to html conversion?)
-@CELERY.task(name=f"{CsvVisualization.instance.identifier}.demo_task", bind=True)
+@CELERY.task(name=f"{JsonVisualization.instance.identifier}.demo_task", bind=True)
 def demo_task(self, db_id: int) -> str:
     TASK_LOGGER.info(f"Starting new demo task with db id '{db_id}'")
     task_data: Optional[ProcessingTask] = ProcessingTask.get_by_id(id_=db_id)

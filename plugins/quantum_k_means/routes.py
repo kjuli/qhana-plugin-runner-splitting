@@ -21,6 +21,7 @@ from qhana_plugin_runner.api.plugin_schemas import (
     PluginMetadata,
     PluginMetadataSchema,
     PluginType,
+    InputDataMetadata,
 )
 from qhana_plugin_runner.db.models.tasks import ProcessingTask
 from qhana_plugin_runner.tasks import save_task_error, save_task_result
@@ -38,7 +39,7 @@ class PluginsView(MethodView):
         """Quantum k-means endpoint returning the plugin metadata."""
         return PluginMetadata(
             title="Quantum k-means",
-            description="K-means algorithms that can run on quantum computers.",
+            description=QKMeans.instance.description,
             name=QKMeans.instance.name,
             version=QKMeans.instance.version,
             type=PluginType.simple,
@@ -46,10 +47,11 @@ class PluginsView(MethodView):
                 href=url_for(f"{QKMEANS_BLP.name}.CalcView"),
                 ui_href=url_for(f"{QKMEANS_BLP.name}.MicroFrontend"),
                 data_input=[
-                    DataMetadata(
+                    InputDataMetadata(
                         data_type="entity-points",
                         content_type=["application/json"],
                         required=True,
+                        parameter="entityPointsUrl",
                     )
                 ],
                 data_output=[
@@ -60,7 +62,7 @@ class PluginsView(MethodView):
                     )
                 ],
             ),
-            tags=["points-to-clusters"],
+            tags=QKMeans.instance.tags,
         )
 
 

@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.9
 
 LABEL org.opencontainers.image.source="https://github.com/UST-QuAntiL/qhana-plugin-runner"
 
@@ -14,6 +14,7 @@ RUN useradd gunicorn
 ENV FLASK_APP=qhana_plugin_runner
 ENV FLASK_ENV=production
 ENV PLUGIN_FOLDERS=/app/plugins:/app/extra-plugins:/app/git-plugins
+ENV TEMPLATE_FOLDERS=/app/templates
 
 
 # can be server or worker

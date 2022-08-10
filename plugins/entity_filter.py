@@ -40,6 +40,7 @@ from qhana_plugin_runner.api.plugin_schemas import (
     PluginMetadata,
     PluginMetadataSchema,
     PluginType,
+    InputDataMetadata,
 )
 from qhana_plugin_runner.api.util import (
     FileUrl,
@@ -172,21 +173,22 @@ class PluginsView(MethodView):
         """Entity filter endpoint returning the plugin metadata."""
         return PluginMetadata(
             title="Entity loader/filter",
-            description="Loads and filters entities from a file that contains a list of entities.",
-            name=EntityFilter.instance.identifier,
+            description=EntityFilter.instance.description,
+            name=EntityFilter.instance.name,
             version=EntityFilter.instance.version,
             type=PluginType.simple,
             entry_point=EntryPoint(
                 href=url_for(f"{ENTITY_FILTER_BLP.name}.ProcessView"),
                 ui_href=url_for(f"{ENTITY_FILTER_BLP.name}.MicroFrontend"),
                 data_input=[
-                    DataMetadata(
+                    InputDataMetadata(
                         data_type="entity/list",
                         content_type=[
                             "application/json",
                             "text/csv",
                         ],
                         required=True,
+                        parameter="inputFileUrl",
                     )
                 ],
                 data_output=[
@@ -197,7 +199,7 @@ class PluginsView(MethodView):
                     )
                 ],
             ),
-            tags=["data-loader"],
+            tags=EntityFilter.instance.tags,
         )
 
 
@@ -295,6 +297,10 @@ class EntityFilter(QHAnaPluginBase):
 
     name = _plugin_name
     version = __version__
+    description = (
+        "Loads and filters entities from a file that contains a list of entities."
+    )
+    tags = ["data-loading"]
 
     def __init__(self, app: Optional[Flask]) -> None:
         super().__init__(app)

@@ -18,6 +18,7 @@ from qhana_plugin_runner.api.plugin_schemas import (
     PluginType,
     EntryPoint,
     DataMetadata,
+    InputDataMetadata,
 )
 
 from . import MANUAL_CLASSIFICATION_BLP, ManualClassification
@@ -50,7 +51,7 @@ class PluginsView(MethodView):
         """Manual classification endpoint returning the plugin metadata."""
         return PluginMetadata(
             title="Manual Classification",
-            description="Manually annotate classes for data sets from MUSE database.",
+            description=ManualClassification.instance.description,
             name=ManualClassification.instance.name,
             version=ManualClassification.instance.version,
             type=PluginType.complex,
@@ -58,13 +59,14 @@ class PluginsView(MethodView):
                 href=url_for(f"{MANUAL_CLASSIFICATION_BLP.name}.LoadView"),
                 ui_href=url_for(f"{MANUAL_CLASSIFICATION_BLP.name}.MicroFrontend"),
                 data_input=[
-                    DataMetadata(
+                    InputDataMetadata(
                         data_type="entity/list",
                         content_type=[
                             "application/json",
                             "text/csv",
                         ],
                         required=True,
+                        parameter="inputFileUrl",
                     )
                 ],
                 data_output=[
@@ -78,7 +80,7 @@ class PluginsView(MethodView):
                     ),
                 ],
             ),
-            tags=["data-annotation"],
+            tags=ManualClassification.instance.tags,
         )
 
 
