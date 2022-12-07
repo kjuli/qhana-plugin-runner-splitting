@@ -41,8 +41,8 @@ from .storage import register_file_store
 from .util.config import DebugConfig, ProductionConfig
 from .util.jinja_helpers import register_helpers
 from .util.plugins import register_plugins
-from .util.templates import register_templates
 from .util.request_helpers import register_additional_schemas
+from .util.templates import register_templates
 
 # change this to change tha flask app name and the config env var prefix
 # must not contain any spaces!
@@ -70,11 +70,15 @@ def create_app(test_config: Optional[Dict[str, Any]] = None):
 
     # load defaults
     config = cast(Config, app.config)
-    flask_env = cast(Optional[str], config.get("ENV"))
-    if flask_env == "production":
-        config.from_object(ProductionConfig)
-    elif flask_env == "development":
-        config.from_object(DebugConfig)
+    flask_debug = (
+        app.config.get("DEBUG", False)
+        or environ.get("FLASK_ENV", "production").lower() == "development"
+    )
+    if flask_debug:
+        app.config.from_object(DebugConfig)
+    elif test_config is None:
+        # only load production defaults if no special test config is given
+        app.config.from_object(ProductionConfig)
 
     if test_config is None:
         # load the instance config, if it exists, when not testing
@@ -88,11 +92,20 @@ def create_app(test_config: Optional[Dict[str, Any]] = None):
         # TODO load some config keys directly from env vars
 
         # load Redis URLs from env vars
-        if "BROKER_URL" in os.environ and "RESULT_BACKEND" in os.environ:
-            config["CELERY"] = {
-                "broker_url": os.environ["BROKER_URL"],
-                "result_backend": os.environ["RESULT_BACKEND"],
-            }
+        if "BROKER_URL" in environ:
+            celery_conf = config.get("CELERY", {})
+            celery_conf["broker_url"] = environ["BROKER_URL"]
+            config["CELERY"] = celery_conf
+
+        if "RESULT_BACKEND" in environ:
+            celery_conf = config.get("CELERY", {})
+            celery_conf["result_backend"] = environ["RESULT_BACKEND"]
+            config["CELERY"] = celery_conf
+
+        if "CELERY_QUEUE" in environ:
+            celery_conf = config.get("CELERY", {})
+            celery_conf["task_default_queue"] = environ["CELERY_QUEUE"]
+            config["CELERY"] = celery_conf
 
         if "PLUGIN_FOLDERS" in os.environ:
             config["PLUGIN_FOLDERS"] = [
@@ -113,6 +126,9 @@ def create_app(test_config: Optional[Dict[str, Any]] = None):
 
         if "DEFAULT_FILE_STORE" in os.environ:
             config["DEFAULT_FILE_STORE"] = os.environ["DEFAULT_FILE_STORE"]
+
+        if "SERVER_NAME" in os.environ:
+            config["SERVER_NAME"] = os.environ["SERVER_NAME"]
     else:
         # load the test config if passed in
         config.from_mapping(test_config)

@@ -9,6 +9,9 @@ git-plugins/
 
 .flaskenv
 
+Dockerfile
+.dockerignore
+
 
 
 # Ignores from Template:
@@ -114,6 +117,7 @@ __pypackages__/
 
 # Celery stuff
 celerybeat-schedule
+celerybeat-schedule.db
 celerybeat.pid
 
 # SageMath parsed files
